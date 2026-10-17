@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GHTK - Tra Cứu Vận Đơn</title>
+    <style>
+        :root { --primary-green: #008842; --dark-green: #006631; --bg-light: #f4f6f8; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background-color: var(--bg-light); margin: 0; padding: 0; color: #333; }
+        header { background-color: var(--primary-green); color: white; padding: 15px; text-align: center; font-size: 1.2rem; font-weight: bold; }
+        .container { max-width: 500px; margin: 20px auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        .search-box { display: flex; gap: 10px; }
+        input { flex: 1; padding: 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 1rem; }
+        button { background-color: var(--primary-green); color: white; border: none; padding: 0 20px; font-size: 1rem; font-weight: bold; border-radius: 4px; cursor: pointer; }
+        button:hover { background-color: var(--dark-green); }
+        .result-box { margin-top: 20px; display: none; border-top: 2px solid #eee; padding-top: 15px; }
+        .order-info-item { margin-bottom: 10px; font-size: 0.95rem; }
+        .order-info-item b { color: #555; }
+        .journey-timeline { margin-top: 15px; background: #eef6f0; padding: 12px; border-radius: 6px; font-size: 0.85rem; line-height: 1.5; }
+        .error-msg { color: #dc3545; margin-top: 15px; font-weight: bold; text-align: center; display: none; }
+    </style>
+</head>
+<body>
+
+    <header>📦 GHTK - TRA CỨU ĐƠN HÀNG</header>
+
+    <div class="container">
+        <div class="search-box">
+            <input type="text" id="searchCode" placeholder="Nhập mã vận đơn (VD: 317...)">
+            <button onclick="lookupOrder()">Tra cứu</button>
+        </div>
+
+        <div id="errorMsg" class="error-msg">Không tìm thấy mã vận đơn này hoặc chưa kết nối cơ sở dữ liệu!</div>
+
+        <div id="resultBox" class="result-box">
+            <h3>Thông tin đơn hàng</h3>
+            <div class="order-info-item"><b>Mã vận đơn:</b> <span id="resId"></span></div>
+            <div class="order-info-item"><b>Trạng thái:</b> <span id="resStatus" style="color: var(--primary-green); font-weight: bold;"></span></div>
+            <div class="order-info-item"><b>Người nhận:</b> <span id="resReceiver"></span></div>
+            <div class="order-info-item"><b>Địa chỉ nhận:</b> <span id="resAddress"></span></div>
+            <div class="order-info-item"><b>Tiền thu hộ (COD):</b> <span id="resCod" style="color: #d9534f; font-weight: bold;"></span></div>
+            
+            <div class="journey-timeline">
+                <b>Hành trình đơn hàng:</b><br>
+                <span id="resJourney"></span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const MASTER_KEY = "$2a$10$hCVgWYz6JwAL3l4UrtsbeejGAttLWwXjc6QD0sZX/BRWxZo7/zYgi";
+        // Dùng chung Bin ID với trang admin (có thể lấy từ localStorage hoặc điền cứng vào đây)
+        const BIN_ID = localStorage.getItem('ghtk_bin_id') || "YOUR_BIN_ID_HERE";
+
+        async function lookupOrder() {
+            let code = document.getElementById('searchCode').value.trim();
+            let resultBox = document.getElementById('resultBox');
+            let errorMsg = document.getElementById('errorMsg');
+
+            if(!code) {
+                alert("Vui lòng nhập mã vận đơn!");
+                return;
+            }
+
+            try {
+                let res = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}/latest`, {
+                    headers: { "X-Master-Key": MASTER_KEY }
+                });
+                let data = await res.json();
+                let orders = data.record || [];
+
+                let found = orders.find(o => o.id === code);
+
+                if(found) {
+                    errorMsg.style.display = 'none';
+                    document.getElementById('resId').innerText = found.id;
+                    document.getElementById('resStatus').innerText = found.status || "Chưa xác nhận";
+                    document.getElementById('resReceiver').innerText = found.receiverName + " (" + found.receiverPhone + ")";
+                    document.getElementById('resAddress').innerText = found.receiverAddress;
+                    document.getElementById('resCod').innerText = found.cod;
+                    document.getElementById('resJourney').innerHTML = found.journey;
+                    resultBox.style.display = 'block';
+                } else {
+                    resultBox.style.display = 'none';
+                    errorMsg.style.display = 'block';
+                }
+            } catch (err) {
+                alert("Lỗi kết nối tới cơ sở dữ liệu đám mây!");
+            }
+        }
+    </script>
+</body>
+</html>
